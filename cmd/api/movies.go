@@ -1,9 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"greenlight.mateuszurbanski.net/internal/data"
 	"greenlight.mateuszurbanski.net/internal/validator"
@@ -69,30 +69,28 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 // the interpolated "id" parameter from the current URL and include it in a placeholder
 // response.
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := app.readIDParam(r)
-	if err != nil {
-		http.NotFound(w, r)
+    id, err := app.readIDParam(r)
+    if err != nil {
+        app.notFoundResponse(w, r)
+        return
+    }
 
-		return
-	}
+    // Call the Get() method to fetch the data for a specific movie. We also need to
+    // use the errors.Is() function to check if it returns a data.ErrRecordNotFound
+    // error, in which case we send a 404 Not Found response to the client.
+    movie, err := app.models.Movies.Get(id)
+    if err != nil {
+        switch {
+        case errors.Is(err, data.ErrRecordNotFound):
+            app.notFoundResponse(w, r)
+        default:
+            app.serverErrorResponse(w, r, err)
+        }
+        return
+    }
 
-	// Create a new instance of the Movie struct, containing the ID we extracted from
-	// the URL and some dummy data. Also notice that we deliberately haven't set a
-	// value for the Year field.
-	movie := data.Movie{
-		ID:        id,
-		CreatedAt: time.Now(),
-		Title:     "Casablanca",
-		Runtime:   102,
-		Genres:    []string{"drama", "romance", "war"},
-		Version:   1,
-	}
-	// Create an envelope{"movie": movie} instance and pass it to writeJSON(), instead
-	// of passing the plain movie struct.
-	// Encode the struct to JSON and send it as the HTTP response.
-	err = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil)
-
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-	}
+    err = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil)
+    if err != nil {
+        app.serverErrorResponse(w, r, err)
+    }
 }
