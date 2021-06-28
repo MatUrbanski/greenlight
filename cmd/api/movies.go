@@ -36,9 +36,10 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		Genres:    []string{"drama", "romance", "war"},
 		Version:   1,
 	}
-
+	// Create an envelope{"movie": movie} instance and pass it to writeJSON(), instead
+	// of passing the plain movie struct.
 	// Encode the struct to JSON and send it as the HTTP response.
-	err = app.writeJSON(w, http.StatusOK, movie, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil)
 
 	if err != nil {
 		app.logger.Println(err)
